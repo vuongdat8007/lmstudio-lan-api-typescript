@@ -10,8 +10,9 @@ export function createProxyRouter(appState: AppState): Router {
 
   /**
    * Proxy all /v1/* requests to LM Studio
+   * Using regex pattern to match any path starting with /v1/
    */
-  router.all('/v1/*', async (req: Request, res: Response, next: NextFunction) => {
+  router.all(/^\/v1\/.*/, async (req: Request, res: Response, next: NextFunction) => {
     const startTime = Date.now();
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 

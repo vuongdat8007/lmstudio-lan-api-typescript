@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "Bash(npm install)",
+      "Bash(where:*)",
+      "Bash(where npm:*)",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(cat:*)",
+      "Bash(node -e:*)",
+      "Bash(env)",
+      "Bash(unset:*)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(npm install:*)",
+      "Bash(sc query:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

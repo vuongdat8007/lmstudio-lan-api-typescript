@@ -58,6 +58,32 @@ npm run build
 npm start
 ```
 
+### Windows Service Installation
+
+For automatic startup on Windows reboot, install as a Windows service:
+
+```bash
+# 1. Build the project
+npm run build
+
+# 2. Install service (run as Administrator)
+npm run service:install
+
+# 3. The service will start automatically and run on boot
+```
+
+See [WINDOWS_SERVICE.md](WINDOWS_SERVICE.md) for detailed instructions on:
+- Installing and managing the Windows service
+- Configuring automatic startup
+- Troubleshooting service issues
+- Viewing service logs in Event Viewer
+
+To uninstall the service:
+```bash
+# Run as Administrator
+npm run service:uninstall
+```
+
 ## Configuration
 
 ### Environment Variables
