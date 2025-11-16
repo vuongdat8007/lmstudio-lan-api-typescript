@@ -97,7 +97,7 @@ export interface ActiveModel {
 }
 
 export interface OperationInfo {
-  type: 'model_load' | 'inference' | null;
+  type: 'model_load' | 'model_unload' | 'inference' | null;
   modelKey?: string;
   progress?: number;
   startedAt?: string;

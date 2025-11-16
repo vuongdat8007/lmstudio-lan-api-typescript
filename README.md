@@ -4,18 +4,46 @@ A production-ready LAN-based API gateway for LM Studio, enabling secure local ne
 
 ## Features
 
-- **Admin API**: Load, unload, and manage models remotely with custom configurations
-- **Transparent Proxy**: Forward all OpenAI-compatible `/v1/*` requests to LM Studio
-- **Security**: API key authentication and IP/CIDR-based access control
-- **Real-time Debugging**: Server-Sent Events for live model loading and inference monitoring
-- **Production-Ready**: TypeScript, comprehensive error handling, structured logging
-- **Auto-Injection**: Automatically inject active model and default parameters into requests
+- 🚀 **Full Model Management**: Load/unload models programmatically via LM Studio SDK
+- ✅ **Load Configuration**: Context length, GPU offload, CPU threads, RoPE scaling
+- 🔄 **Multi-Instance Support**: Run same model with different configurations
+- 🌐 **Transparent Proxy**: Forward all OpenAI-compatible `/v1/*` requests to LM Studio
+- ⚡ **Auto-Injection**: Automatically inject active model and inference parameters
+- 🔐 **Security**: API key authentication and IP/CIDR-based access control
+- 📊 **Real-time Debugging**: Server-Sent Events for live monitoring
+- 🏗️ **Production-Ready**: TypeScript, comprehensive error handling, structured logging
+
+## 🎯 SDK Integration (NEW!)
+
+The gateway now uses the **official @lmstudio/sdk** for complete model management:
+
+✅ **Fully Automated Model Loading** - No more manual UI interaction required!
+
+```bash
+# Load a model with custom configuration
+POST /admin/models/load
+{
+  "modelKey": "qwen2-1.5b-instruct",
+  "loadConfig": {
+    "contextLength": 8192,
+    "gpu": {"ratio": 1.0, "layers": 32}
+  },
+  "activate": true
+}
+```
+
+See [SDK_INTEGRATION.md](SDK_INTEGRATION.md) for complete documentation on:
+- Real model loading/unloading via API
+- Load configuration parameters (context, GPU, CPU)
+- Multi-instance support
+- Migration from manual workflow
 
 ## Tech Stack
 
 - **Runtime**: Node.js 20+ (LTS)
 - **Language**: TypeScript 5.3+
-- **Framework**: Express.js 4.x
+- **Framework**: Express.js 5.x
+- **LM Studio SDK**: @lmstudio/sdk 1.5+ (WebSocket-based model management)
 - **Validation**: Zod (schema validation and type inference)
 - **Logging**: Winston (structured logging)
 - **HTTP Client**: axios (with streaming support)

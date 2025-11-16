@@ -87,7 +87,7 @@ export function createProxyRouter(appState: AppState): Router {
         },
         data: requestBody,
         params: req.query,
-        responseType: requestBody.stream ? 'stream' : 'json',
+        responseType: requestBody?.stream ? 'stream' : 'json',
         timeout: 120000, // 2 minutes for long-running requests
       });
 
@@ -112,7 +112,7 @@ export function createProxyRouter(appState: AppState): Router {
       });
 
       // Handle streaming response
-      if (requestBody.stream && response.data.pipe) {
+      if (requestBody?.stream && response.data?.pipe) {
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');

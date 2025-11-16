@@ -65,22 +65,95 @@ export function createDebugRouter(appState: AppState): Router {
    * GET /debug/metrics - Performance metrics
    */
   router.get('/metrics', (_req: Request, res: Response): void => {
+    // Calculate average response time from recent requests
+    const completedRequests = appState.debugState.recentRequests.filter(
+      (req) => req.status === 'completed' && req.timeMs !== undefined
+    );
+
+    const avgResponseTime =
+      completedRequests.length > 0
+        ? completedRequests.reduce((sum, req) => sum + (req.timeMs || 0), 0) /
+          completedRequests.length
+        : 0;
+
+    // Calculate error rate
+    const errorRate =
+      appState.debugState.totalRequests > 0
+        ? (appState.debugState.totalErrors / appState.debugState.totalRequests) * 100
+        : 0;
+
+    // Get min, max, median response times
+    const responseTimes = completedRequests.map((req) => req.timeMs || 0).sort((a, b) => a - b);
+    const minResponseTime = responseTimes.length > 0 ? responseTimes[0] : 0;
+    const maxResponseTime =
+      responseTimes.length > 0 ? responseTimes[responseTimes.length - 1] : 0;
+    const medianResponseTime =
+      responseTimes.length > 0
+        ? responseTimes[Math.floor(responseTimes.length / 2)]
+        : 0;
+
     res.json({
       modelInfo: {
         modelKey: appState.activeModel.modelKey,
         instanceId: appState.activeModel.instanceId,
+        defaultInference: appState.activeModel.defaultInference,
       },
       performance: {
         totalRequests: appState.debugState.totalRequests,
         totalErrors: appState.debugState.totalErrors,
+        errorRate: Math.round(errorRate * 100) / 100, // Round to 2 decimal places
         recentRequestCount: appState.debugState.recentRequests.length,
+        completedRequestCount: completedRequests.length,
+        avgResponseTimeMs: Math.round(avgResponseTime * 100) / 100,
+        minResponseTimeMs: minResponseTime,
+        maxResponseTimeMs: maxResponseTime,
+        medianResponseTimeMs: medianResponseTime,
+      },
+      recentActivity: {
+        last10Requests: appState.debugState.recentRequests.slice(-10).map((req) => ({
+          requestId: req.requestId,
+          status: req.status,
+          timeMs: req.timeMs,
+          timestamp: req.timestamp,
+        })),
       },
       system: {
         uptime: process.uptime(),
-        memoryUsage: process.memoryUsage(),
+        uptimeFormatted: formatUptime(process.uptime()),
+        memoryUsage: {
+          rss: Math.round((process.memoryUsage().rss / 1024 / 1024) * 100) / 100, // MB
+          heapTotal:
+            Math.round((process.memoryUsage().heapTotal / 1024 / 1024) * 100) / 100,
+          heapUsed:
+            Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100,
+          external:
+            Math.round((process.memoryUsage().external / 1024 / 1024) * 100) / 100,
+        },
+        memoryUsageRaw: process.memoryUsage(),
+        nodeVersion: process.version,
+        platform: process.platform,
       },
+      currentOperation: appState.debugState.currentOperation,
     });
   });
 
   return router;
+}
+
+/**
+ * Format uptime in human-readable format
+ */
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  parts.push(`${secs}s`);
+
+  return parts.join(' ');
 }

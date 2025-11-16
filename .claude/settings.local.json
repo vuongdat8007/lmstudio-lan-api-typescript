@@ -13,7 +13,17 @@
       "Bash(unset:*)",
       "Bash(timeout 5 curl:*)",
       "Bash(npm install:*)",
-      "Bash(sc query:*)"
+      "Bash(sc query:*)",
+      "Bash(http://127.0.0.1:8002/admin/models/load)",
+      "Bash(http://127.0.0.1:8002/admin/models/unload)",
+      "Bash(http://127.0.0.1:8002/admin/models/activate)",
+      "Bash(http://127.0.0.1:1234/v1/models/load)",
+      "Bash(http://127.0.0.1:1234/v0/models/load)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm ci:*)",
+      "Bash(dir:*)",
+      "Bash(node node_modules/typescript/bin/tsc:*)"
     ],
     "deny": [],
     "ask": []
