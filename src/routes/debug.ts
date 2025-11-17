@@ -92,6 +92,38 @@ export function createDebugRouter(appState: AppState): Router {
         ? responseTimes[Math.floor(responseTimes.length / 2)]
         : 0;
 
+    // Calculate token throughput metrics
+    const requestsWithTokens = completedRequests.filter(
+      (req) => req.tokenUsage?.totalTokens && req.timeMs && req.timeMs > 0
+    );
+
+    // Calculate tokens per second for each request, then average
+    const tokensPerSecArray = requestsWithTokens.map((req) => {
+      const timeSeconds = (req.timeMs || 0) / 1000;
+      return timeSeconds > 0 ? (req.tokenUsage?.totalTokens || 0) / timeSeconds : 0;
+    });
+
+    const avgTokensPerSec =
+      tokensPerSecArray.length > 0
+        ? tokensPerSecArray.reduce((sum, val) => sum + val, 0) / tokensPerSecArray.length
+        : 0;
+
+    // Calculate token statistics
+    const totalTokensProcessed = requestsWithTokens.reduce(
+      (sum, req) => sum + (req.tokenUsage?.totalTokens || 0),
+      0
+    );
+
+    const totalPromptTokens = requestsWithTokens.reduce(
+      (sum, req) => sum + (req.tokenUsage?.promptTokens || 0),
+      0
+    );
+
+    const totalCompletionTokens = requestsWithTokens.reduce(
+      (sum, req) => sum + (req.tokenUsage?.completionTokens || 0),
+      0
+    );
+
     res.json({
       modelInfo: {
         modelKey: appState.activeModel.modelKey,
@@ -108,6 +140,15 @@ export function createDebugRouter(appState: AppState): Router {
         minResponseTimeMs: minResponseTime,
         maxResponseTimeMs: maxResponseTime,
         medianResponseTimeMs: medianResponseTime,
+        avgTokensPerSec: Math.round(avgTokensPerSec * 100) / 100,
+        totalTokensProcessed,
+        requestsWithTokenData: requestsWithTokens.length,
+        tokenStats: requestsWithTokens.length > 0 ? {
+          totalPromptTokens,
+          totalCompletionTokens,
+          avgPromptTokens: Math.round((totalPromptTokens / requestsWithTokens.length) * 100) / 100,
+          avgCompletionTokens: Math.round((totalCompletionTokens / requestsWithTokens.length) * 100) / 100,
+        } : undefined,
       },
       recentActivity: {
         last10Requests: appState.debugState.recentRequests.slice(-10).map((req) => ({

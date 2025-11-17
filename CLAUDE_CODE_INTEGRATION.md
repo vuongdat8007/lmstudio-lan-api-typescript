@@ -283,10 +283,18 @@ Content-Type: application/json
 
 ### 2. Inference (OpenAI-Compatible)
 
+**Important**: The gateway supports **flexible routing** for OpenAI endpoints:
+- ✅ Standard: `/v1/chat/completions` (recommended)
+- ✅ Shorthand: `/chat/completions` (auto-corrected to `/v1/chat/completions`)
+
+Both formats work identically. Use whichever is more convenient.
+
 #### Chat Completions
 
 ```bash
 POST /v1/chat/completions
+# or
+POST /chat/completions  (automatically forwarded with /v1/ prefix)
 ```
 
 **Headers:**

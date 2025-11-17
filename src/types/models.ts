@@ -107,7 +107,12 @@ export interface OperationInfo {
 export interface RequestInfo {
   requestId: string;
   status: 'pending' | 'completed' | 'failed';
-  tokensGenerated?: number;
+  tokensGenerated?: number; // Deprecated: use tokenUsage.completionTokens
+  tokenUsage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+  };
   timeMs?: number;
   timestamp: string;
 }

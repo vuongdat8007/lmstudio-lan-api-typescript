@@ -17,6 +17,8 @@ const envSchema = z.object({
     .transform((val) => val === 'true'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  PROXY_TIMEOUT: z.coerce.number().int().min(0).default(120000),
+  PROXY_STREAM_TIMEOUT: z.coerce.number().int().min(0).default(0),
 });
 
 // Parse and validate environment variables
@@ -32,6 +34,8 @@ export const settings = {
   requireAuthForHealth: env.REQUIRE_AUTH_FOR_HEALTH,
   logLevel: env.LOG_LEVEL,
   nodeEnv: env.NODE_ENV,
+  proxyTimeout: env.PROXY_TIMEOUT,
+  proxyStreamTimeout: env.PROXY_STREAM_TIMEOUT,
 
   // Computed properties
   get ipAllowlistItems(): string[] {

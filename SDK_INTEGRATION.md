@@ -44,11 +44,43 @@ Client → Gateway → LM Studio
    - Access to full model management API
    - Event-driven architecture for real-time updates
 
-2. **HTTP for Proxy Routes** (`/v1/*`)
+2. **HTTP for Proxy Routes** (`/v1/*` or shorthand)
    - Direct proxy to LM Studio HTTP API
    - Lower latency for inference requests
    - Compatible with all OpenAI-compatible clients
    - Streaming support maintained
+   - **Flexible routing**: Supports both `/v1/chat/completions` and `/chat/completions`
+
+---
+
+## Flexible Routing
+
+The gateway supports **both path formats** for OpenAI API endpoints:
+
+### Standard Format (Recommended)
+```bash
+POST /v1/chat/completions
+POST /v1/completions
+GET /v1/models
+```
+
+### Shorthand Format (Auto-corrected)
+```bash
+POST /chat/completions    # Automatically forwarded as /v1/chat/completions
+POST /completions         # Automatically forwarded as /v1/completions
+GET /models               # Automatically forwarded as /v1/models
+```
+
+**Supported Shorthand Endpoints:**
+- `/chat/completions` → `/v1/chat/completions`
+- `/completions` → `/v1/completions`
+- `/models` → `/v1/models`
+- `/embeddings` → `/v1/embeddings`
+- `/images/generations` → `/v1/images/generations`
+- `/audio/transcriptions` → `/v1/audio/transcriptions`
+- `/audio/translations` → `/v1/audio/translations`
+
+**Note**: Both formats work identically. The `/v1/` prefix is added automatically when needed.
 
 ---
 
@@ -547,6 +579,35 @@ Times depend on:
 - **Gateway**: ~50-100MB (minimal overhead)
 - **LM Studio**: Depends on loaded models (2-20GB typical)
 
+### Inference Timeouts
+
+The gateway uses configurable timeouts for proxy requests:
+
+- **Non-streaming requests**: Default 120 seconds (2 minutes)
+  - Configurable via `PROXY_TIMEOUT` environment variable
+  - Suitable for most inference requests
+
+- **Streaming requests**: Default 0 (no timeout)
+  - Configurable via `PROXY_STREAM_TIMEOUT` environment variable
+  - Streaming responses use event-driven completion tracking
+  - Client disconnects automatically clean up resources
+  - Set to 0 (recommended) or a high value (300000 = 5 minutes) for long-running generations
+
+**Why streaming has no timeout by default:**
+- Streaming responses complete asynchronously via event handlers
+- Large model inference can take several minutes for long prompts
+- Client disconnect automatically terminates the upstream connection
+- No timeout prevents premature termination of valid long-running requests
+
+**To customize timeouts** (add to `.env`):
+```env
+# Non-streaming timeout (milliseconds)
+PROXY_TIMEOUT=120000
+
+# Streaming timeout (0 = no timeout, recommended)
+PROXY_STREAM_TIMEOUT=0
+```
+
 ---
 
 ## Troubleshooting
@@ -604,6 +665,50 @@ Times depend on:
      }
    }
    ```
+
+### Inference Request Timeouts
+
+**Symptom:** `timeout of 120000ms exceeded` or `ECONNABORTED` errors
+
+**Cause:** Request takes longer than configured timeout
+
+**Solutions:**
+
+1. **For streaming requests** (recommended):
+   ```env
+   # Set streaming timeout to 0 (no timeout)
+   PROXY_STREAM_TIMEOUT=0
+   ```
+
+2. **For non-streaming requests that need more time**:
+   ```env
+   # Increase timeout to 5 minutes
+   PROXY_TIMEOUT=300000
+   ```
+
+3. **Check LM Studio logs** to verify request is being processed:
+   - If LM Studio shows processing, increase gateway timeout
+   - If LM Studio shows no activity, check request forwarding
+
+4. **Optimize model performance**:
+   - Use smaller context length if possible
+   - Increase GPU offload ratio
+   - Use quantized models (Q4, Q5 instead of Q8)
+
+5. **For very long prompts or generations**:
+   - Use streaming mode (`stream: true`)
+   - Set `PROXY_STREAM_TIMEOUT=0` to disable timeout
+   - Client can cancel by disconnecting
+
+**Debug logging:**
+```env
+LOG_LEVEL=debug
+```
+
+This shows detailed timing information:
+- When request is sent to LM Studio
+- Stream start/completion events
+- Actual processing time
 
 ### TypeScript Build Errors
 

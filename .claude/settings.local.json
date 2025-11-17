@@ -23,7 +23,8 @@
       "Bash(npx tsc:*)",
       "Bash(npm ci:*)",
       "Bash(dir:*)",
-      "Bash(node node_modules/typescript/bin/tsc:*)"
+      "Bash(node node_modules/typescript/bin/tsc:*)",
+      "Bash(npm info:*)"
     ],
     "deny": [],
     "ask": []
