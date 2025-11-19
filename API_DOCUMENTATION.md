@@ -524,14 +524,44 @@ data: {"timestamp":"2025-11-16T10:00:00Z","message":"Debug stream connected"}
 event: model_load_start
 data: {"modelKey":"qwen2-1.5b-instruct","instanceId":"primary","timestamp":"2025-11-16T10:00:05Z"}
 
+event: model_load_progress
+data: {"modelKey":"qwen2-1.5b-instruct","instanceId":"primary","progress":14.6,"progressRaw":0.146,"timestamp":"2025-11-16T10:00:06Z"}
+
+event: model_load_progress
+data: {"modelKey":"qwen2-1.5b-instruct","instanceId":"primary","progress":33.1,"progressRaw":0.331,"timestamp":"2025-11-16T10:00:07Z"}
+
+event: model_load_progress
+data: {"modelKey":"qwen2-1.5b-instruct","instanceId":"primary","progress":51.4,"progressRaw":0.514,"timestamp":"2025-11-16T10:00:08Z"}
+
 event: model_load_complete
 data: {"modelKey":"qwen2-1.5b-instruct","activated":true,"totalTimeMs":5432,"timestamp":"2025-11-16T10:00:10Z"}
 
 event: inference_start
 data: {"requestId":"req_1234567_abc","method":"POST","path":"/v1/chat/completions","timestamp":"2025-11-16T10:01:00Z"}
 
+event: debug_log
+data: {"timestamp":"2025-11-16 10:01:00","level":"INFO","message":"[Client=ABC123][Endpoint=chatCompletions] Running chat completion","raw":"[2025-11-16 10:01:00][INFO] [Client=ABC123][Endpoint=chatCompletions] Running chat completion","timestamp":"2025-11-16T10:01:00Z"}
+
+event: debug_log
+data: {"timestamp":"2025-11-16 10:01:00","level":"DEBUG","message":"[LM Studio] GPU Configuration: Strategy: evenly","raw":"[2025-11-16 10:01:00][DEBUG] [LM Studio] GPU Configuration: Strategy: evenly","timestamp":"2025-11-16T10:01:00Z"}
+
 event: inference_complete
 data: {"requestId":"req_1234567_abc","totalTimeMs":7850,"tokenUsage":{"promptTokens":25,"completionTokens":50,"totalTokens":75},"timestamp":"2025-11-16T10:01:08Z"}
+
+event: lmstudio_chat_start
+data: {"message":"Running chat completion on conversation with 158 messages","timestamp":"2025-11-16T10:01:00Z"}
+
+event: lmstudio_sampling_params
+data: {"repeat_penalty":1.1,"top_k":40,"top_p":0.95,"temp":0.0,"timestamp":"2025-11-16T10:01:00Z"}
+
+event: lmstudio_prompt_progress
+data: {"progress":36.6,"message":"Prompt processing progress: 36.6%","timestamp":"2025-11-16T10:01:01Z"}
+
+event: lmstudio_cache_stats
+data: {"reused":2158,"total":5889,"percentage":36.6,"prefix":2158,"nonPrefix":0,"message":"Cache reuse summary: 2158/5889 of prompt (36.6446%), 2158 prefix, 0 non-prefix","timestamp":"2025-11-16T10:01:01Z"}
+
+event: lmstudio_token_info
+data: {"n_ctx":12032,"n_batch":512,"n_predict":-1,"n_keep":2198,"totalPromptTokens":5889,"promptTokensToDecode":3731,"timestamp":"2025-11-16T10:01:01Z"}
 
 event: error
 data: {"requestId":"req_7654321_xyz","error":"Model not found","timestamp":"2025-11-16T10:02:00Z"}
@@ -539,10 +569,13 @@ data: {"requestId":"req_7654321_xyz","error":"Model not found","timestamp":"2025
 
 **Event Types**:
 
+### Gateway Events
+
 | Event | Description | Data Fields |
 |-------|-------------|-------------|
 | `connected` | Client connected | `timestamp`, `message` |
 | `model_load_start` | Model loading began | `modelKey`, `instanceId`, `loadConfig` |
+| `model_load_progress` | Model loading progress update | `modelKey`, `instanceId`, `progress` (%), `progressRaw` (0-1) |
 | `model_load_complete` | Model loaded successfully | `modelKey`, `activated`, `totalTimeMs` |
 | `model_unload_start` | Model unloading began | `modelKey`, `instanceId` |
 | `model_unload_complete` | Model unloaded | `modelKey`, `totalTimeMs` |
@@ -550,6 +583,25 @@ data: {"requestId":"req_7654321_xyz","error":"Model not found","timestamp":"2025
 | `inference_start` | Inference request started | `requestId`, `method`, `path` |
 | `inference_complete` | Inference completed | `requestId`, `totalTimeMs`, `tokenUsage` |
 | `error` | Error occurred | `requestId`, `error`, `operation` |
+
+### LM Studio Log Events (when log monitoring enabled)
+
+| Event | Description | Data Fields |
+|-------|-------------|-------------|
+| `debug_log` | Raw log entry from LM Studio (all logs) | `timestamp`, `level`, `message`, `raw` |
+| `lmstudio_chat_start` | Chat completion started | `message` |
+| `lmstudio_sampling_params` | Sampling parameters for inference | `repeat_penalty`, `top_k`, `top_p`, `temp`, etc. |
+| `lmstudio_prompt_progress` | Prompt processing progress | `progress` (%), `message` |
+| `lmstudio_cache_stats` | KV cache reuse statistics | `reused`, `total`, `percentage`, `prefix`, `nonPrefix` |
+| `lmstudio_token_info` | Token and batch configuration | `n_ctx`, `n_batch`, `n_predict`, `totalPromptTokens`, etc. |
+| `lmstudio_processing_start` | Begin processing prompt | `message` |
+| `lmstudio_month_transition` | Log directory switched to new month | `oldDirectory`, `newDirectory`, `newLogFile`, `timestamp` |
+
+**Notes**:
+- The `model_load_progress` event is emitted multiple times during model loading, providing real-time progress updates from 0% to 100%. The `progress` field is a percentage (0-100) with 1 decimal place, while `progressRaw` is the raw progress value (0.0-1.0) from the LM Studio SDK.
+- LM Studio log events require log monitoring to be enabled via `ENABLE_LOG_MONITORING=true` and a valid `LMSTUDIO_LOG_DIR` path.
+- Log monitoring provides deep visibility into LM Studio's internal operations, including sampling parameters, cache efficiency, and prompt processing.
+- The `lmstudio_month_transition` event is triggered when the gateway automatically switches from one month's log directory to the next (e.g., from `2025-11` to `2025-12`). This happens via both periodic checks (every 10 minutes) and real-time parent directory watching.
 
 ---
 
@@ -848,13 +900,33 @@ const streamingChat = async () => {
   }
 };
 
-// Debug: Monitor events
+// Debug: Monitor events with model loading progress
 const monitorEvents = () => {
   const eventSource = new EventSource(
     'http://localhost:8002/debug/stream',
     { headers: { 'X-API-Key': 'your-secret-key' } }
   );
 
+  // Model loading start
+  eventSource.addEventListener('model_load_start', (e) => {
+    const data = JSON.parse(e.data);
+    console.log(`Loading model: ${data.modelKey}`);
+  });
+
+  // Model loading progress (updates in real-time)
+  eventSource.addEventListener('model_load_progress', (e) => {
+    const data = JSON.parse(e.data);
+    console.log(`Loading progress: ${data.progress}%`);
+    // Update progress bar in UI
+  });
+
+  // Model loading complete
+  eventSource.addEventListener('model_load_complete', (e) => {
+    const data = JSON.parse(e.data);
+    console.log(`Model loaded in ${data.totalTimeMs}ms`);
+  });
+
+  // Inference events
   eventSource.addEventListener('inference_start', (e) => {
     console.log('Inference started:', JSON.parse(e.data));
   });
@@ -862,6 +934,49 @@ const monitorEvents = () => {
   eventSource.addEventListener('inference_complete', (e) => {
     const data = JSON.parse(e.data);
     console.log(`Inference completed in ${data.totalTimeMs}ms`);
+    if (data.tokenUsage) {
+      console.log(`Tokens: ${data.tokenUsage.totalTokens}`);
+    }
+  });
+
+  // Error events
+  eventSource.addEventListener('error', (e) => {
+    const data = JSON.parse(e.data);
+    console.error('Error:', data.error);
+  });
+
+  // LM Studio log events (when log monitoring enabled)
+
+  // Raw debug logs - ALL LM Studio log entries
+  eventSource.addEventListener('debug_log', (e) => {
+    const data = JSON.parse(e.data);
+    console.log(`[${data.timestamp}][${data.level}] ${data.message}`);
+    // data.raw contains the complete original log line
+  });
+
+  eventSource.addEventListener('lmstudio_sampling_params', (e) => {
+    const data = JSON.parse(e.data);
+    console.log('Sampling params:', data);
+  });
+
+  eventSource.addEventListener('lmstudio_prompt_progress', (e) => {
+    const data = JSON.parse(e.data);
+    console.log(`Prompt processing: ${data.progress}%`);
+  });
+
+  eventSource.addEventListener('lmstudio_cache_stats', (e) => {
+    const data = JSON.parse(e.data);
+    console.log(`Cache reuse: ${data.reused}/${data.total} (${data.percentage}%)`);
+  });
+
+  eventSource.addEventListener('lmstudio_token_info', (e) => {
+    const data = JSON.parse(e.data);
+    console.log(`Context: ${data.n_ctx}, Batch: ${data.n_batch}, Tokens: ${data.totalPromptTokens}`);
+  });
+
+  eventSource.addEventListener('lmstudio_month_transition', (e) => {
+    const data = JSON.parse(e.data);
+    console.log(`Log directory switched: ${data.oldDirectory} -> ${data.newDirectory}`);
   });
 };
 ```

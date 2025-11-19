@@ -110,10 +110,31 @@ export function createAdminRouter(appState: AppState): Router {
           loadConfig.ropeFrequencyScale = payload.loadConfig.ropeFrequencyScale;
         }
 
-        // Load the model
+        // Load the model with verbose progress tracking
+        // The onProgress callback is called for each progress update
         await client.llm.load(payload.modelKey, {
           identifier: payload.instanceId,
           config: loadConfig,
+          verbose: true,
+          onProgress: (progress) => {
+            // Update debug state with progress
+            if (appState.debugState.currentOperation) {
+              appState.debugState.currentOperation.progress = progress;
+            }
+
+            // Broadcast progress event to debug stream
+            broadcastDebugEvent('model_load_progress', {
+              modelKey: payload.modelKey,
+              instanceId: payload.instanceId || null,
+              progress: Math.round(progress * 1000) / 10, // Convert to percentage with 1 decimal
+              progressRaw: progress,
+            });
+
+            logger.debug('Model loading progress', {
+              modelKey: payload.modelKey,
+              progress: `${Math.round(progress * 100)}%`,
+            });
+          },
         });
 
         logger.info('Model loaded successfully via SDK', {

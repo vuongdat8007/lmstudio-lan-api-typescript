@@ -24,7 +24,12 @@
       "Bash(npm ci:*)",
       "Bash(dir:*)",
       "Bash(node node_modules/typescript/bin/tsc:*)",
-      "Bash(npm info:*)"
+      "Bash(npm info:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npm view:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm run dev:*)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

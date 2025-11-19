@@ -19,6 +19,11 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PROXY_TIMEOUT: z.coerce.number().int().min(0).default(120000),
   PROXY_STREAM_TIMEOUT: z.coerce.number().int().min(0).default(0),
+  LMSTUDIO_LOG_DIR: z.string().default(''),
+  ENABLE_LOG_MONITORING: z
+    .string()
+    .default('false')
+    .transform((val) => val === 'true'),
 });
 
 // Parse and validate environment variables
@@ -36,6 +41,8 @@ export const settings = {
   nodeEnv: env.NODE_ENV,
   proxyTimeout: env.PROXY_TIMEOUT,
   proxyStreamTimeout: env.PROXY_STREAM_TIMEOUT,
+  lmStudioLogDir: env.LMSTUDIO_LOG_DIR,
+  enableLogMonitoring: env.ENABLE_LOG_MONITORING,
 
   // Computed properties
   get ipAllowlistItems(): string[] {

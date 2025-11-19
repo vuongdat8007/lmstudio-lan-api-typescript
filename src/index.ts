@@ -10,6 +10,7 @@ import { createAdminRouter } from './routes/admin';
 import { createDebugRouter } from './routes/debug';
 import { createProxyRouter } from './routes/proxy';
 import { AppState } from './types/models';
+import { getLMStudioLogMonitor } from './services/logMonitor';
 
 /**
  * Create and configure Express application
@@ -105,7 +106,7 @@ export function createApp(): Express {
 export function startServer(): void {
   const app = createApp();
 
-  const server = app.listen(settings.gatewayPort, settings.gatewayHost, () => {
+  const server = app.listen(settings.gatewayPort, settings.gatewayHost, async () => {
     logger.info('='.repeat(60));
     logger.info('LM Studio LAN Gateway (TypeScript) v1.0.0');
     logger.info('='.repeat(60));
@@ -115,13 +116,38 @@ export function startServer(): void {
     logger.info(`IP Allowlist: ${settings.ipAllowlistItems.join(', ') || '*'}`);
     logger.info(`Environment: ${settings.nodeEnv}`);
     logger.info(`Log Level: ${settings.logLevel}`);
+    logger.info(`Log Monitoring: ${settings.enableLogMonitoring ? 'enabled' : 'disabled'}`);
+    if (settings.enableLogMonitoring && settings.lmStudioLogDir) {
+      logger.info(`Log Directory: ${settings.lmStudioLogDir}`);
+    }
     logger.info('='.repeat(60));
     logger.info('Gateway started successfully');
+
+    // Start LM Studio log monitoring
+    try {
+      const logMonitor = getLMStudioLogMonitor();
+      await logMonitor.start(settings.lmStudioLogDir, settings.enableLogMonitoring);
+    } catch (error) {
+      logger.error('Failed to start log monitoring', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   // Graceful shutdown
-  const shutdown = (signal: string): void => {
+  const shutdown = async (signal: string): Promise<void> => {
     logger.info(`${signal} signal received: closing HTTP server`);
+
+    // Stop log monitoring
+    try {
+      const logMonitor = getLMStudioLogMonitor();
+      await logMonitor.stop();
+    } catch (error) {
+      logger.error('Error stopping log monitoring', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     server.close(() => {
       logger.info('HTTP server closed');
       process.exit(0);
